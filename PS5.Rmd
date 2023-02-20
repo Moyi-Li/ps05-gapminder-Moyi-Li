@@ -18,7 +18,9 @@ There are 13055 rows and 25 columns! The small sample of data looks great!
 ```{r load data}
 data = read_delim('gapminder.csv')
 num_row <- nrow(data)
+num_row
 num_col <- ncol(data)
+num_col
 few_lines <- head(data, 3)
 few_lines
 ```
@@ -28,8 +30,11 @@ few_lines
 
 ```{r each length}
 length_iso3 <- length(unique(data$iso3))
+length_iso3
 length_iso2 <- length(unique(data$iso2))
+length_iso2
 length_name <- length(unique(data$name))
+length_name
 ```
 
 2. The difference happened since there are missing values for some of the countries. For instance, there is iso3 for the country CHANISL, but this country has no mating name and iso2 codes.
@@ -43,9 +48,16 @@ iso2_name <- data %>%
   arrange(desc(name_num)) %>% 
   head(5)
 iso2_name
+
+na_names <- data %>%
+  filter(is.na(iso2)) %>%
+  select(iso2, name, iso3) %>% 
+  distinct()
+
+na_names
 ```
 
-b)  Similarly, for most of the iso3 and name, it is 1 to 1 matched. However, there is the NA (Missing values) in iso3 codes that correspond to 4 names for countries.
+b)  Similarly, for most of the iso3 and name, it is 1 to 1 matched. However, there is the NA (Missing values) in iso3 codes that correspond to 4 names for countries. These 4 NAs are represents as iso3: CHANISL, GBM, KOS, NLD_CURACAO.
 
 ```{r iso3 name summary}
 iso3_name <- data %>% 
@@ -54,13 +66,22 @@ iso3_name <- data %>%
   arrange(desc(iso_num)) %>% 
   head(5)
 iso3_name
+
+na_names <- data %>%
+  filter(is.na(name)) %>%
+  select(iso2, name, iso3) %>% 
+  distinct()
+
+na_names
 ```
 
 3. The maximum year is in 2019, and the minimum year is in 1960.
 
 ```{r year max and min}
 max_time <- max(data$time, na.rm = TRUE)
+max_time
 min_time <- min(data$time, na.rm = TRUE)
+min_time
 ```
 
 
@@ -141,11 +162,10 @@ region_barplot <- ggplot(compared_region, aes(x = region, y = average_co2_pc, fi
   scale_fill_discrete(name = "Year")
 
 region_barplot
-ggsave("Average CO2 Emissions per Capita for 5 Continents.png", region_barplot, width = 10, height = 6)
 
 ```
 
-6. Because 2019 data is missing, I'll take 2016 in this problem.
+6. Because 2019 data is missing, I'll take 2016 in this problem. The largest and smallest co2 emmiteers are showed in table.
 
 ```{r three for each region}
 
@@ -188,7 +208,7 @@ ggplot(data_1960, aes(x = GDP_PC, y = lifeExpectancy, size = totalPopulation, co
        color = "Continent")
 ```
 
-2. This plot used 2019 data instead.
+2. This plot used 2019 data instead. As GDP per capita increase, the Life expectancy also increases, which refers that there is a positive relationship between GDP percapita and life expectancy. The x axis ranges from 0 to over 90000, and y axis ranges from 0 to over 80. The Africa groups are still relatively low in life-expectancy and GDP per capita, while in contrast the Europe is still having the high GDP per capita and high life expectancy of over 80.  
 
 ```{r GDP scatterplot 2019}
 
@@ -279,7 +299,7 @@ us_rank <- data %>%
 us_rank
 ```
 
-8. In the relative ranking table, I found that US ranking's decreases is not that immediate.
+8. In the relative ranking table, I found that US ranking's decreases is not that immediate. In relative ranking, US ranks roughly 0.09 in 1960 and 0.23 in 2019.
 
 ```{r US relative ranking}
 us_relative_rank <- data %>%
