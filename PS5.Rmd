@@ -1,0 +1,295 @@
+---
+title: "INFO 201/PS5"
+author: "Moyi Li"
+date: '2023-02-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+getwd()
+```
+
+## 1. Load and Check data
+There are 13055 rows and 25 columns! The small sample of data looks great!
+
+```{r load data}
+data = read_delim('gapminder.csv')
+num_row <- nrow(data)
+num_col <- ncol(data)
+few_lines <- head(data, 3)
+few_lines
+```
+
+## 2. Descriptive statistics
+1. There are 253 countries for iso3, 249 countries for iso2, and 250 countries for name.
+
+```{r each length}
+length_iso3 <- length(unique(data$iso3))
+length_iso2 <- length(unique(data$iso2))
+length_name <- length(unique(data$name))
+```
+
+2. The difference happened since there are missing values for some of the countries. For instance, there is iso3 for the country CHANISL, but this country has no mating name and iso2 codes.
+
+a) For most of the iso2 and name, it is 1 to 1 matched. However, there is the NA (Missing values) in iso2 codes that correspond to 2 names for countries.
+
+```{r iso2 name summary}
+iso2_name <- data %>% 
+  group_by(iso2) %>%
+  summarize(name_num = n_distinct(name)) %>% 
+  arrange(desc(name_num)) %>% 
+  head(5)
+iso2_name
+```
+
+b)  Similarly, for most of the iso3 and name, it is 1 to 1 matched. However, there is the NA (Missing values) in iso3 codes that correspond to 4 names for countries.
+
+```{r iso3 name summary}
+iso3_name <- data %>% 
+  group_by(name) %>%
+  summarize(iso_num = n_distinct(iso3)) %>% 
+  arrange(desc(iso_num)) %>% 
+  head(5)
+iso3_name
+```
+
+3. The maximum year is in 2019, and the minimum year is in 1960.
+
+```{r year max and min}
+max_time <- max(data$time, na.rm = TRUE)
+min_time <- min(data$time, na.rm = TRUE)
+```
+
+
+## 3. CO2 Emissions
+1. 2017, 2018, and 2019 has the most missing values of 217.
+
+```{r missing co2}
+missing_co2 <- data %>%
+  filter(!is.na(time)) %>% 
+  filter(is.na(co2) | is.na(co2_PC)) %>%
+  group_by(time) %>%
+  summarize(num_missing = n()) %>% 
+  arrange(desc(num_missing)) %>% 
+  head(5)
+
+missing_co2
+```
+
+2. In the plot, I found that China has the sharpest increase and decrease between 2000 and 2020, followed by the US, while the UK's co2 emissions position is at a stable and lowest value from 1960 to 2020. On the eve of 2020, all countries show declines of varying magnitude.
+
+```{r plot co2}
+few_countries <- c('United States of America', 'China', 'India', 'Japan', 'United Kingdom of Great Britain and Northern Ireland')
+
+co2_select <- data %>% 
+  filter(name %in% few_countries) %>% 
+  group_by(name, time) %>% 
+  summarize(co2 = sum(co2, na.rm =TRUE), .groups = 'drop')
+
+ggplot(co2_select, aes(x = time, y = co2, color = name)) + geom_line() + 
+  labs(title = "Total CO2 Emissions Over Time", 
+       x = "Year", 
+       y = "Total CO2 Emissions (metric tons)")
+```
+
+3. This figure shows that it is not China, but the United States of America that has the highest overall CO2 emissions per capita. Besides, rather than being a smooth and low emitter, the UK was in second place of my five chosen countries from 1960 to 1990, and was overtaken by Japan in the late 1990s. China and India have a relatively low emittion between 1960 to 2020, roughly lower than 2.5 tons per capita. While, China had a dramatic increase after 2000, and India had the lowest emissions of the five countries.
+
+```{r plot co2_pc}
+
+few_countries <- c('United States of America', 'China', 'India', 'Japan', 'United Kingdom of Great Britain and Northern Ireland')
+
+co2_pc_select <- data %>% 
+  filter(name %in% few_countries) %>% 
+  group_by(name, time) %>% 
+  summarize(co2_PC = sum(co2_PC, na.rm =TRUE), .groups = 'drop')
+
+ggplot(co2_pc_select, aes(x = time, y = co2_PC, color = name)) + geom_line() + 
+  labs(title = "Total CO2 Emissions Over Time", 
+       x = "Year", 
+       y = "Total CO2 Emissions (metric tons)")
+```
+
+4. I found that Europe and Asia are the top regions average co2 emissions per capita, which are roughly 6.64 and 6.47 respectively. Besides, Africa is the region with the least average co2 emissions per capita.
+
+```{r average region}
+average_region <- data %>% 
+  filter(!is.na(region)) %>% 
+  filter(time == 2016) %>% 
+  group_by(region) %>% 
+  summarize(average_co2_pc = mean(co2_PC, na.rm = TRUE))
+
+average_region
+
+```
+
+5. In the barplot, I found out that except in Americas, all other continents have increases in average co2 emissions per capita from 1960 to 2016.
+
+```{r barplot region}
+compared_region <- data %>% 
+  filter(!is.na(region)) %>% 
+  filter(time == 1960 | time == 2016) %>% 
+  group_by(region, time) %>% 
+  summarize(average_co2_pc = mean(co2_PC, na.rm = TRUE), .groups = 'drop')
+
+region_barplot <- ggplot(compared_region, aes(x = region, y = average_co2_pc, fill = as.factor(time))) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  labs(title = "Average CO2 Emissions per Capita for 5 Continents",
+       x = "Continent", y = "Average CO2 per Capita") +
+  scale_fill_discrete(name = "Year")
+
+region_barplot
+ggsave("Average CO2 Emissions per Capita for 5 Continents.png", region_barplot, width = 10, height = 6)
+
+```
+
+6. Because 2019 data is missing, I'll take 2016 in this problem.
+
+```{r three for each region}
+
+co2_per_2016 <- data %>% 
+  filter(!is.na(region), !is.na(co2_PC)) %>% 
+  filter(time == 2016) %>% 
+  group_by(region, name) %>% 
+  summarize(co2_for_country = sum(co2_PC, na.rm = TRUE), .groups = 'drop')
+
+largest_three <- co2_per_2016 %>%
+  group_by(region) %>%
+  top_n(3, co2_for_country)
+
+largest_three
+
+smallest_three <- co2_per_2016 %>%
+  group_by(region) %>%
+  top_n(-3, co2_for_country)
+
+smallest_three
+```
+
+## 4. GDP per capita
+1. I saw that as GDP per capita increase, the Life expectancy also increases, which refers that there is a positive relationship between GDP percapita and life expectancy. There is no obvious relationship between total population and other variables, but the regions are roughly grouped together. For instance, the countries in Europe continent all has a relatively high life expectancy about 70 years and high GDP per capita in 1960. On the other side, the country in Africa are all with low GDP per capita and a low life expectany of less than 50 years.
+
+```{r GDP scatterplot 1960}
+
+data_1960 <- data %>% 
+  filter(time == 1960) %>% 
+  drop_na(region, GDP_PC, lifeExpectancy, totalPopulation)
+  
+ggplot(data_1960, aes(x = GDP_PC, y = lifeExpectancy, size = totalPopulation, color = region)) +
+  geom_point()+
+  scale_size(range = c(1, 10), breaks = c(1e6, 4e7, 6e7, 1e8, 3e8, 5e8),
+             labels = c("1M", "40M", "60M", '100M', '300M', '500M')) +
+  labs(title = "GDP per capita versus life expectancy in 1960",
+       x = "GDP per Capita",
+       y = "Life Expectancy",
+       size = "Total Population",
+       color = "Continent")
+```
+
+2. This plot used 2019 data instead.
+
+```{r GDP scatterplot 2019}
+
+data_1960 <- data %>% 
+  filter(time == 2019) %>% 
+  drop_na(region, GDP_PC, lifeExpectancy, totalPopulation)
+  
+ggplot(data_1960, aes(x = GDP_PC, y = lifeExpectancy, size = totalPopulation, color = region)) +
+  geom_point()+
+  scale_size(range = c(1, 10), breaks = c(1e6, 4e7, 6e7, 1e8, 3e8, 5e8),
+             labels = c("1M", "40M", "60M", '100M', '300M', '500M')) +
+  labs(title = "GDP per capita versus life expectancy in 2019",
+       x = "GDP per Capita",
+       y = "Life Expectancy",
+       size = "Total Population",
+       color = "Continent")
+
+```
+
+3. Compared to 1960, The positive relationship between GDP per capita and life expectancy is still exists in 2016, but for all countries and regions, GDP per capita and life expectancy have risen significantly. The life expectancy in European countries in 2016 are around 80 years and GDP per capita reached values slightly above 90,000. The life expectancy in Africa are also increases from less than 50 years in 1960 to around 55-75 years. 
+
+
+4. The result fits what I saw in plots that the life expectancy in all regions have rise significantly.
+
+```{r GDP 1960 and 2019 avg life expectancy}
+
+avg_life_exp_1960 <- data %>%
+  filter(!is.na(region)) %>% 
+  filter(time == 1960) %>%
+  group_by(region) %>%
+  summarise(avg_life_exp = mean(lifeExpectancy, na.rm = TRUE))
+
+avg_life_exp_1960
+
+avg_life_exp_2019 <- data %>%
+  filter(!is.na(region)) %>% 
+  filter(time == 2019) %>%
+  group_by(region) %>%
+  summarise(avg_life_exp = mean(lifeExpectancy, na.rm = TRUE))
+
+avg_life_exp_2019
+```
+
+5. I found out that the Africa has the largest average growth rate, while Europe has the smallest average growth rate.Americas and Oceania have similar average growth rate.
+
+```{r avg growth rate for regions}
+time_range <- c(1960, 2019)
+
+life_exp_growth <- data %>%
+  filter(time %in% time_range) %>%
+  group_by(region, name) %>%
+  arrange(name, time) %>%
+  mutate(prev = lag(lifeExpectancy)) %>%
+  filter(!is.na(prev), !is.na(region)) %>%
+  summarise(growth_rate = (lifeExpectancy - prev) / prev, .groups = 'drop') %>% 
+  group_by(region) %>% 
+  summarise(avg_growth_rate = mean(growth_rate)) %>% 
+  arrange(avg_growth_rate)
+
+life_exp_growth
+
+```
+
+6. We can clearly see the difference between 1960 and 2019 of GDP per capita. In 1960, there was negative GDP per ccapita and only a few count over 30000, while in 2019 the GDP per capita reached to over 90000.
+
+```{r GDP_PC histogram}
+data_1960_2019 <- data %>% 
+  filter(time %in% time_range)
+
+ggplot(data_1960_2019, aes(x = GDP_PC, fill = factor(time))) +
+  geom_histogram(binwidth = 5000, position = "dodge") +
+  labs(title = "Histogram of GDP per capita for years of 1960 and 2019",
+       x = "GDP per capita", 
+       y = "Count")
+
+```
+
+7. The ranking for US is 17 in 1960 and 46 in 2019.
+
+```{r US ranking}
+us_rank <- data %>%
+  filter(time %in% time_range, !is.na(name), !is.na(lifeExpectancy)) %>%
+  group_by(time) %>%
+  mutate(rank = rank(desc(lifeExpectancy))) %>% 
+  filter(name == "United States of America") %>% 
+  select(name, rank)
+
+us_rank
+```
+
+8. In the relative ranking table, I found that US ranking's decreases is not that immediate.
+
+```{r US relative ranking}
+us_relative_rank <- data %>%
+  filter(time %in% time_range, !is.na(name), !is.na(lifeExpectancy)) %>%
+  group_by(time) %>%
+  mutate(rank = rank(desc(lifeExpectancy)), num_countries = n_distinct(name), relative = rank / num_countries) %>% 
+  filter(name == "United States of America") %>% 
+  select(name, rank, num_countries, relative)
+
+us_relative_rank
+
+```
+
